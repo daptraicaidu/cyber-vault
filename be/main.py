@@ -35,9 +35,9 @@ def get_vault_items(search: str = None, severity: str = None, lang: str = 'vi', 
         params.extend([f"%{search}%", f"%{search}%"])
     if severity:
         if severity == "Medium to High":
-            base_query += " AND (severity LIKE '%Medium%' OR severity LIKE '%High%' OR severity LIKE '%Trung bình%' OR severity LIKE '%Cao%')"
+            base_query += " AND (severity LIKE '%Medium to High%' OR severity LIKE '%Trung bình đến Cao%' OR severity LIKE '%Trung binh den Cao%')"
         elif severity == "High to Critical":
-            base_query += " AND (severity LIKE '%High%' OR severity LIKE '%Critical%' OR severity LIKE '%Cao%' OR severity LIKE '%Nghiêm trọng%' OR severity LIKE '%Nghiem trong%')"
+            base_query += " AND (severity LIKE '%High to Critical%' OR severity LIKE '%Cao đến Nghiêm trọng%' OR severity LIKE '%Cao den Nghiem trong%')"
         elif severity == "Critical":
             base_query += " AND (severity LIKE '%Critical%' OR severity LIKE '%Nghiêm trọng%' OR severity LIKE '%Nghiem trong%')"
 
