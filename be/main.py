@@ -4,6 +4,7 @@ from fastapi.middleware.cors import CORSMiddleware
 import sqlite3
 import json
 import os
+import math
 
 app = FastAPI(title="Cyber Vault API")
 
@@ -23,18 +24,45 @@ def get_db_connection():
     return conn
 
 @app.get("/api/vault")
-def get_vault_items(search: str = None, severity: str = None, lang: str = 'vi'):
+def get_vault_items(search: str = None, severity: str = None, lang: str = 'vi', page: int = Query(1, ge=1), limit: int = Query(20, ge=1)):
     conn = get_db_connection()
-    query = "SELECT * FROM vault_index WHERE format = 'json' AND language = ?"
+    
+    base_query = "FROM vault_index WHERE format = 'json' AND language = ?"
     params = [lang]
 
     if search:
-        query += " AND (title LIKE ? OR category LIKE ?)"
+        base_query += " AND (title LIKE ? OR category LIKE ?)"
         params.extend([f"%{search}%", f"%{search}%"])
     if severity:
-        query += " AND severity LIKE ?"
+        base_query += " AND severity LIKE ?"
         params.append(f"%{severity}%")
 
+    # Count total items
+    count_query = f"SELECT COUNT(*) as total {base_query}"
+    total_count = conn.execute(count_query, params).fetchone()['total']
+    total_pages = math.ceil(total_count / limit) if limit > 0 else 1
+
+    # Fetch paginated items
+    offset = (page - 1) * limit
+    items_query = f"SELECT * {base_query} LIMIT ? OFFSET ?"
+    items_params = params + [limit, offset]
+
+    items = conn.execute(items_query, items_params).fetchall()
+    conn.close()
+    
+    return {
+        "items": [dict(ix) for ix in items],
+        "total_count": total_count,
+        "total_pages": total_pages,
+        "page": page,
+        "limit": limit
+    }
+
+@app.get("/api/vault/search")
+def search_vault_items(q: str = Query(..., min_length=1), lang: str = 'vi'):
+    conn = get_db_connection()
+    query = "SELECT id, title FROM vault_index WHERE format = 'json' AND language = ? AND title LIKE ? LIMIT 10"
+    params = [lang, f"%{q}%"]
     items = conn.execute(query, params).fetchall()
     conn.close()
     return [dict(ix) for ix in items]

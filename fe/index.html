@@ -13,26 +13,66 @@
             --danger: #f38ba8;
             --warning: #f9e2af;
         }
+        body.light-mode {
+            --bg: #f5f5f5;
+            --surface: #ffffff;
+            --text: #333333;
+            --accent: #007bff;
+            --danger: #dc3545;
+            --warning: #ffc107;
+        }
         body {
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
             background-color: var(--bg); color: var(--text);
-            margin: 0; display: flex; height: 100vh;
+            margin: 0; display: flex; flex-direction: column; height: 100vh;
         }
+        
+        /* Header */
+        .header {
+            display: flex; justify-content: space-between; align-items: center;
+            padding: 15px 30px; background-color: var(--surface);
+            border-bottom: 1px solid #45475a;
+        }
+        .header h1 { margin: 0; font-size: 24px; color: var(--accent); }
+        .toggles { display: flex; gap: 10px; }
+        .toggle-btn {
+            background: var(--bg); color: var(--text); border: 1px solid #45475a;
+            padding: 8px 15px; border-radius: 5px; cursor: pointer; font-weight: bold;
+        }
+        
+        /* Layout */
+        .content-wrapper { display: flex; flex: 1; overflow: hidden; }
+        
         /* Sidebar Filter */
         .sidebar {
             width: 280px; background-color: var(--surface); padding: 20px;
             border-right: 1px solid #45475a; display: flex; flex-direction: column; gap: 15px;
         }
+        .search-container { position: relative; }
         .sidebar input, .sidebar select {
+            width: 100%; box-sizing: border-box;
             padding: 10px; border-radius: 5px; border: 1px solid #45475a;
             background: var(--bg); color: var(--text); outline: none;
         }
-        /* Main Content */
-        .main {
-            flex: 1; padding: 30px; overflow-y: auto;
+        
+        /* Dropdown */
+        .dropdown {
+            position: absolute; top: 100%; left: 0; right: 0;
+            background: var(--surface); border: 1px solid #45475a;
+            border-radius: 5px; margin-top: 5px; padding: 0;
+            list-style: none; max-height: 200px; overflow-y: auto;
+            z-index: 10; display: none; box-shadow: 0 4px 6px rgba(0,0,0,0.3);
         }
+        .dropdown li {
+            padding: 10px; cursor: pointer; border-bottom: 1px solid #45475a;
+        }
+        .dropdown li:hover { background: var(--bg); color: var(--accent); }
+        .dropdown li:last-child { border-bottom: none; }
+
+        /* Main Content */
+        .main { flex: 1; padding: 30px; overflow-y: auto; display: flex; flex-direction: column; }
         .grid {
-            display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 20px;
+            display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 20px; flex: 1; align-content: flex-start;
         }
         .card {
             background: var(--surface); padding: 20px; border-radius: 10px;
@@ -45,40 +85,75 @@
         .badge.High, .badge.Critical { background: var(--danger); color: #000; }
         .badge.Medium { background: var(--warning); color: #000; }
         
-        /* Modal Chi tiết */
+        /* Pagination */
+        .pagination { display: flex; justify-content: center; align-items: center; gap: 15px; margin-top: 20px; }
+        .pagination button {
+            background: var(--surface); color: var(--text); border: 1px solid #45475a;
+            padding: 8px 15px; border-radius: 5px; cursor: pointer;
+        }
+        .pagination button:disabled { opacity: 0.5; cursor: not-allowed; }
+        
+        /* Modal */
         .modal {
             display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-            background: rgba(0,0,0,0.7); justify-content: center; align-items: center;
+            background: rgba(0,0,0,0.7); justify-content: center; align-items: center; z-index: 100;
         }
         .modal-content {
             background: var(--bg); width: 60%; max-height: 80vh; border-radius: 12px;
             padding: 30px; overflow-y: auto; position: relative; border: 1px solid #45475a;
+            word-wrap: break-word; /* Prevent horizontal scrolling */
         }
         .close-btn { position: absolute; top: 15px; right: 20px; cursor: pointer; font-size: 24px; color: var(--danger);}
         .section-box { background: var(--surface); padding: 15px; border-radius: 8px; margin-bottom: 15px; border-left: 4px solid var(--accent); }
+        .section-box pre { background: var(--bg); padding: 10px; border-radius: 5px; overflow-x: auto; white-space: pre-wrap; word-wrap: break-word; }
+        .section-box code { font-family: Consolas, monospace; }
         
         .download-group { margin-bottom: 20px; display: flex; gap: 10px; }
         .btn { padding: 8px 15px; border-radius: 5px; text-decoration: none; font-weight: bold; cursor: pointer; border: none;}
-        .btn-md { background: #313244; color: var(--text); }
+        .btn-md { background: #313244; color: #cdd6f4; }
+        body.light-mode .btn-md { background: #e0e0e0; color: #333; }
         .btn-json { background: var(--accent); color: #000; }
+
+        @media (max-width: 768px) {
+            .content-wrapper { flex-direction: column; }
+            .sidebar { width: auto; border-right: none; border-bottom: 1px solid #45475a; }
+            .modal-content { width: 95%; padding: 20px; }
+            .header { flex-direction: column; gap: 15px; }
+        }
     </style>
 </head>
 <body>
 
-    <div class="sidebar">
-        <h2>Cyber Vault</h2>
-        <input type="text" id="searchInput" placeholder="Tìm kiếm lỗ hổng...">
-        <select id="severityFilter">
-            <option value="">Tất cả mức độ</option>
-            <option value="Critical">Critical</option>
-            <option value="High">High</option>
-            <option value="Medium">Medium</option>
-        </select>
+    <div class="header">
+        <h1>Cyber Vault</h1>
+        <div class="toggles">
+            <button id="themeToggle" class="toggle-btn">🌙 Dark</button>
+            <button id="langToggle" class="toggle-btn">🇻🇳 VI</button>
+        </div>
     </div>
 
-    <div class="main">
-        <div class="grid" id="vaultGrid">
+    <div class="content-wrapper">
+        <div class="sidebar">
+            <div class="search-container">
+                <input type="text" id="searchInput" placeholder="Tìm kiếm lỗ hổng...">
+                <ul id="searchDropdown" class="dropdown"></ul>
             </div>
+            <select id="severityFilter">
+                <option value="">Tất cả mức độ</option>
+                <option value="Critical">Critical</option>
+                <option value="High">High</option>
+                <option value="Medium">Medium</option>
+            </select>
+        </div>
+
+        <div class="main">
+            <div class="grid" id="vaultGrid"></div>
+            <div class="pagination" id="paginationControls">
+                <button id="prevPage">⬅️ Prev</button>
+                <span id="pageInfo">Page 1 / 1</span>
+                <button id="nextPage">Next ➡️</button>
+            </div>
+        </div>
     </div>
 
     <div class="modal" id="detailModal">
@@ -88,49 +163,214 @@
                 <a href="#" id="dl-md" class="btn btn-md">📥 Tải Markdown</a>
                 <a href="#" id="dl-json" class="btn btn-json">📥 Tải JSON</a>
             </div>
-            <h1 id="m-title" style="color: var(--accent);">Tên lỗ hổng</h1>
+            <h1 id="m-title" style="color: var(--accent); margin-top: 0;"></h1>
             <p><strong>CWE/CVE:</strong> <span id="m-cwe"></span></p>
             
-            <div class="section-box">
-                <h3 style="margin-top:0">📌 Mô tả & Nguyên nhân gốc rễ (Root Cause)</h3>
-                <p id="m-desc"></p>
-                <p id="m-rootcause"></p>
-            </div>
-
-            <div class="section-box" style="border-left-color: var(--danger)">
-                <h3 style="margin-top:0">⚠️ Tác động (Impact)</h3>
-                <p id="m-impact"></p>
-            </div>
-
-            <div class="section-box" style="border-left-color: var(--warning)">
-                <h3 style="margin-top:0">🛡️ Phòng thủ & Giảm thiểu (Defense)</h3>
-                <ul id="m-defense"></ul>
-            </div>
+            <div id="modalSections"></div>
         </div>
     </div>
 
     <script>
-        const API_BASE = "/api/vault"; // Nếu cấu hình Nginx chuẩn, dùng path tương đối thế này là đẹp nhất
+        const API_BASE = "/api/vault";
+        
+        // State
+        let currentLang = localStorage.getItem('lang') || 'vi';
+        let currentTheme = localStorage.getItem('theme') || 'dark';
+        let currentPage = 1;
+        let totalPages = 1;
+        const detailCache = {};
+        let searchTimeout;
 
-        async function fetchVault() {
-            const search = document.getElementById('searchInput').value;
-            const severity = document.getElementById('severityFilter').value;
+        // Translations
+        const dict = {
+            vi: {
+                searchPlaceholder: "Tìm kiếm lỗ hổng...",
+                allSeverity: "Tất cả mức độ",
+                downloadMd: "📥 Tải Markdown",
+                downloadJson: "📥 Tải JSON",
+                prev: "⬅️ Trước",
+                next: "Sau ➡️",
+                page: "Trang",
+                fields: {
+                    description: "📌 Mô tả",
+                    root_cause: "📌 Nguyên nhân gốc rễ (Root Cause)",
+                    prerequisites: "📌 Điều kiện tiền đề",
+                    attack_surface: "📌 Bề mặt tấn công",
+                    impact: "⚠️ Tác động (Impact)",
+                    exploit_flow: "🔥 Luồng khai thác",
+                    exploit_payloads: "🔥 Payloads",
+                    exploit_variants: "🔥 Các biến thể",
+                    defense_mitigation: "🛡️ Giảm thiểu",
+                    defense_best_practices: "🛡️ Thực hành tốt nhất",
+                    defense_detection: "🛡️ Phát hiện",
+                    defense_common_mistakes: "🛡️ Lỗi phổ biến",
+                    lab_setup: "🧪 Cài đặt Lab",
+                    lab_steps: "🧪 Các bước Lab",
+                    lab_verification: "🧪 Xác minh Lab",
+                    references: "📚 Tài liệu tham khảo"
+                }
+            },
+            en: {
+                searchPlaceholder: "Search vulnerabilities...",
+                allSeverity: "All severities",
+                downloadMd: "📥 Download Markdown",
+                downloadJson: "📥 Download JSON",
+                prev: "⬅️ Prev",
+                next: "Next ➡️",
+                page: "Page",
+                fields: {
+                    description: "📌 Description",
+                    root_cause: "📌 Root Cause",
+                    prerequisites: "📌 Prerequisites",
+                    attack_surface: "📌 Attack Surface",
+                    impact: "⚠️ Impact",
+                    exploit_flow: "🔥 Exploit Flow",
+                    exploit_payloads: "🔥 Payloads",
+                    exploit_variants: "🔥 Variants",
+                    defense_mitigation: "🛡️ Mitigation",
+                    defense_best_practices: "🛡️ Best Practices",
+                    defense_detection: "🛡️ Detection",
+                    defense_common_mistakes: "🛡️ Common Mistakes",
+                    lab_setup: "🧪 Lab Setup",
+                    lab_steps: "🧪 Lab Steps",
+                    lab_verification: "🧪 Lab Verification",
+                    references: "📚 References"
+                }
+            }
+        };
+
+        // Initialize Theme & Language
+        function initThemeLang() {
+            document.documentElement.lang = currentLang;
+            if (currentTheme === 'light') document.body.classList.add('light-mode');
+            updateUIStrings();
             
-            let url = `${API_BASE}?lang=vi`;
-            if (search) url += `&search=${search}`;
-            if (severity) url += `&severity=${severity}`;
+            document.getElementById('themeToggle').addEventListener('click', () => {
+                currentTheme = currentTheme === 'dark' ? 'light' : 'dark';
+                localStorage.setItem('theme', currentTheme);
+                document.body.classList.toggle('light-mode');
+                updateUIStrings();
+            });
 
-            const res = await fetch(url);
-            const data = await res.json();
-            renderGrid(data);
+            document.getElementById('langToggle').addEventListener('click', () => {
+                currentLang = currentLang === 'vi' ? 'en' : 'vi';
+                localStorage.setItem('lang', currentLang);
+                updateUIStrings();
+                currentPage = 1;
+                fetchVault();
+            });
+        }
+
+        function updateUIStrings() {
+            const t = dict[currentLang];
+            document.getElementById('themeToggle').innerText = currentTheme === 'dark' ? '🌙 Dark' : '☀️ Light';
+            document.getElementById('langToggle').innerText = currentLang === 'vi' ? '🇻🇳 VI' : '🇬🇧 EN';
+            document.getElementById('searchInput').placeholder = t.searchPlaceholder;
+            document.getElementById('severityFilter').options[0].text = t.allSeverity;
+            document.getElementById('dl-md').innerText = t.downloadMd;
+            document.getElementById('dl-json').innerText = t.downloadJson;
+            document.getElementById('prevPage').innerText = t.prev;
+            document.getElementById('nextPage').innerText = t.next;
+            updatePageInfo();
+        }
+
+        // Search Debounce & Dropdown
+        document.getElementById('searchInput').addEventListener('input', (e) => {
+            const q = e.target.value.trim();
+            clearTimeout(searchTimeout);
+            
+            if (!q) {
+                document.getElementById('searchDropdown').style.display = 'none';
+                currentPage = 1;
+                fetchVault();
+                return;
+            }
+
+            searchTimeout = setTimeout(async () => {
+                try {
+                    const res = await fetch(`${API_BASE}/search?q=${encodeURIComponent(q)}&lang=${currentLang}`);
+                    const results = await res.json();
+                    const dropdown = document.getElementById('searchDropdown');
+                    
+                    if (results.length > 0) {
+                        dropdown.innerHTML = results.map(r => `<li onclick="selectSearchResult(${r.id})">${r.title}</li>`).join('');
+                        dropdown.style.display = 'block';
+                    } else {
+                        dropdown.style.display = 'none';
+                    }
+
+                    // Update main grid as well
+                    currentPage = 1;
+                    fetchVault();
+                } catch (err) {
+                    console.error("Search failed:", err);
+                }
+            }, 1000);
+        });
+
+        // Hide dropdown when clicking outside
+        document.addEventListener('click', (e) => {
+            if (!e.target.closest('.search-container')) {
+                document.getElementById('searchDropdown').style.display = 'none';
+            }
+        });
+
+        function selectSearchResult(id) {
+            document.getElementById('searchDropdown').style.display = 'none';
+            openDetail(id);
+        }
+
+        document.getElementById('severityFilter').addEventListener('change', () => {
+            currentPage = 1;
+            fetchVault();
+        });
+
+        // Pagination Controls
+        document.getElementById('prevPage').addEventListener('click', () => {
+            if (currentPage > 1) { currentPage--; fetchVault(); }
+        });
+        document.getElementById('nextPage').addEventListener('click', () => {
+            if (currentPage < totalPages) { currentPage++; fetchVault(); }
+        });
+
+        function updatePageInfo() {
+            document.getElementById('pageInfo').innerText = `${dict[currentLang].page} ${currentPage} / ${totalPages || 1}`;
+            document.getElementById('prevPage').disabled = currentPage <= 1;
+            document.getElementById('nextPage').disabled = currentPage >= totalPages;
+        }
+
+        // Main Fetch
+        async function fetchVault() {
+            try {
+                const search = document.getElementById('searchInput').value.trim();
+                const severity = document.getElementById('severityFilter').value;
+                
+                let url = `${API_BASE}?lang=${currentLang}&page=${currentPage}&limit=20`;
+                if (search) url += `&search=${encodeURIComponent(search)}`;
+                if (severity) url += `&severity=${encodeURIComponent(severity)}`;
+
+                const res = await fetch(url);
+                const data = await res.json();
+                
+                totalPages = data.total_pages;
+                updatePageInfo();
+                renderGrid(data.items);
+            } catch (err) {
+                console.error("Failed to fetch vault items:", err);
+            }
         }
 
         function renderGrid(items) {
             const grid = document.getElementById('vaultGrid');
             grid.innerHTML = '';
+            
+            if (!items || items.length === 0) {
+                grid.innerHTML = '<p>Không có kết quả nào.</p>';
+                return;
+            }
+
             items.forEach(item => {
-                const severClass = item.severity && item.severity.includes("High") ? "High" : (item.severity && item.severity.includes("Critical") ? "Critical" : "Medium");
-                
+                const severClass = item.severity?.includes("High") ? "High" : (item.severity?.includes("Critical") ? "Critical" : "Medium");
                 grid.innerHTML += `
                     <div class="card" onclick="openDetail(${item.id})">
                         <span class="badge ${severClass}">${item.severity || 'N/A'}</span>
@@ -141,40 +381,105 @@
             });
         }
 
-        async function openDetail(id) {
-            // Lấy data chi tiết file JSON
-            const res = await fetch(`${API_BASE}/${id}/content`);
-            const data = await res.json();
+        // Dynamic Modal Rendering
+        function escapeHtml(unsafe) {
+            if (typeof unsafe !== 'string') return unsafe;
+            return unsafe
+                 .replace(/&/g, "&amp;")
+                 .replace(/</g, "&lt;")
+                 .replace(/>/g, "&gt;")
+                 .replace(/"/g, "&quot;")
+                 .replace(/'/g, "&#039;");
+        }
 
-            // Đổ dữ liệu vào Modal
-            document.getElementById('m-title').innerText = data.name || data.title;
-            document.getElementById('m-cwe').innerText = `${data.cwe} | ${data.cve}`;
-            document.getElementById('m-desc').innerText = data.description;
-            document.getElementById('m-rootcause').innerText = data.root_cause;
-            document.getElementById('m-impact').innerText = data.impact;
+        function buildSection(title, content, format = 'text', borderColor = 'var(--accent)') {
+            if (!content || (Array.isArray(content) && content.length === 0)) return '';
             
-            const defUl = document.getElementById('m-defense');
-            defUl.innerHTML = '';
-            if (data.defense && data.defense.mitigation) {
-                data.defense.mitigation.forEach(m => defUl.innerHTML += `<li>${m}</li>`);
+            let body = '';
+            if (format === 'text') {
+                body = `<p>${escapeHtml(content)}</p>`;
+            } else if (format === 'list') {
+                body = `<ul>${content.map(c => `<li>${escapeHtml(c)}</li>`).join('')}</ul>`;
+            } else if (format === 'ordered') {
+                body = `<ol>${content.map(c => `<li>${escapeHtml(c)}</li>`).join('')}</ol>`;
+            } else if (format === 'code') {
+                body = content.map(c => `<pre><code>${escapeHtml(c)}</code></pre>`).join('');
+            } else if (format === 'links') {
+                body = `<ul>${content.map(c => `<li><a href="${escapeHtml(c)}" target="_blank" style="color: var(--accent);">${escapeHtml(c)}</a></li>`).join('')}</ul>`;
             }
 
-            // Gắn link download
-            document.getElementById('dl-md').href = `${API_BASE}/${id}/download?format=md`;
-            document.getElementById('dl-json').href = `${API_BASE}/${id}/download?format=json`;
+            return `
+                <div class="section-box" style="border-left-color: ${borderColor}">
+                    <h3 style="margin-top:0">${title}</h3>
+                    ${body}
+                </div>
+            `;
+        }
 
-            document.getElementById('detailModal').style.display = 'flex';
+        async function openDetail(id) {
+            try {
+                let data;
+                if (detailCache[id]) {
+                    data = detailCache[id];
+                } else {
+                    const res = await fetch(`${API_BASE}/${id}/content`);
+                    data = await res.json();
+                    detailCache[id] = data;
+                }
+
+                // Title & CWE
+                document.getElementById('m-title').innerText = data?.name || data?.title || 'Unknown';
+                document.getElementById('m-cwe').innerText = `${data?.cwe || 'N/A'} | ${data?.cve || 'N/A'}`;
+                
+                const t = dict[currentLang].fields;
+                let html = '';
+
+                // Descriptions
+                html += buildSection(t.description, data?.description);
+                html += buildSection(t.root_cause, data?.root_cause);
+                html += buildSection(t.prerequisites, data?.prerequisites, 'list');
+                html += buildSection(t.attack_surface, data?.attack_surface);
+                
+                // Impact
+                html += buildSection(t.impact, data?.impact, 'text', 'var(--danger)');
+
+                // Exploit
+                html += buildSection(t.exploit_flow, data?.exploit?.flow, 'ordered', 'var(--danger)');
+                html += buildSection(t.exploit_payloads, data?.exploit?.payloads, 'code', 'var(--danger)');
+                html += buildSection(t.exploit_variants, data?.exploit?.variants, 'list', 'var(--danger)');
+
+                // Defense
+                html += buildSection(t.defense_mitigation, data?.defense?.mitigation, 'list', 'var(--warning)');
+                html += buildSection(t.defense_best_practices, data?.defense?.best_practices, 'list', 'var(--warning)');
+                html += buildSection(t.defense_detection, data?.defense?.detection, 'list', 'var(--warning)');
+                html += buildSection(t.defense_common_mistakes, data?.defense?.common_mistakes, 'list', 'var(--warning)');
+
+                // Lab
+                html += buildSection(t.lab_setup, data?.lab?.setup, 'text', '#a6e3a1');
+                html += buildSection(t.lab_steps, data?.lab?.steps, 'ordered', '#a6e3a1');
+                html += buildSection(t.lab_verification, data?.lab?.verification, 'text', '#a6e3a1');
+
+                // References
+                html += buildSection(t.references, data?.references, 'links', '#b4befe');
+
+                document.getElementById('modalSections').innerHTML = html;
+
+                document.getElementById('dl-md').href = `${API_BASE}/${id}/download?format=md`;
+                document.getElementById('dl-json').href = `${API_BASE}/${id}/download?format=json`;
+
+                document.getElementById('detailModal').style.display = 'flex';
+            } catch (err) {
+                console.error("Failed to load details:", err);
+                alert("Could not load details.");
+            }
         }
 
         function closeModal() {
             document.getElementById('detailModal').style.display = 'none';
         }
 
-        // Bắt sự kiện tìm kiếm
-        document.getElementById('searchInput').addEventListener('input', fetchVault);
-        document.getElementById('severityFilter').addEventListener('change', fetchVault);
-
-        // Load lần đầu
+        // Bootstrap
+        initThemeLang();
         fetchVault();
     </script>
 </body>
