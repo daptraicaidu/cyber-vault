@@ -398,14 +398,18 @@
             let body = '';
             if (format === 'text') {
                 body = `<p>${escapeHtml(content)}</p>`;
-            } else if (format === 'list') {
-                body = `<ul>${content.map(c => `<li>${escapeHtml(c)}</li>`).join('')}</ul>`;
-            } else if (format === 'ordered') {
-                body = `<ol>${content.map(c => `<li>${escapeHtml(c)}</li>`).join('')}</ol>`;
-            } else if (format === 'code') {
-                body = content.map(c => `<pre><code>${escapeHtml(c)}</code></pre>`).join('');
-            } else if (format === 'links') {
-                body = `<ul>${content.map(c => `<li><a href="${escapeHtml(c)}" target="_blank" style="color: var(--accent);">${escapeHtml(c)}</a></li>`).join('')}</ul>`;
+            } else {
+                if (!Array.isArray(content)) content = [content];
+                
+                if (format === 'list') {
+                    body = `<ul>${content.map(c => `<li>${escapeHtml(c)}</li>`).join('')}</ul>`;
+                } else if (format === 'ordered') {
+                    body = `<ol>${content.map(c => `<li>${escapeHtml(c)}</li>`).join('')}</ol>`;
+                } else if (format === 'code') {
+                    body = content.map(c => `<pre><code>${escapeHtml(c)}</code></pre>`).join('');
+                } else if (format === 'links') {
+                    body = `<ul>${content.map(c => `<li><a href="${escapeHtml(c)}" target="_blank" style="color: var(--accent);">${escapeHtml(c)}</a></li>`).join('')}</ul>`;
+                }
             }
 
             return `
