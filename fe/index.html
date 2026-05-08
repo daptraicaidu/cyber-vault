@@ -82,8 +82,9 @@
         .badge {
             display: inline-block; padding: 4px 8px; border-radius: 4px; font-size: 12px; font-weight: bold; margin-bottom: 10px;
         }
-        .badge.High, .badge.Critical { background: var(--danger); color: #000; }
-        .badge.Medium { background: var(--warning); color: #000; }
+        .badge.High { background: var(--warning); color: #000; }
+        .badge.Critical { background: var(--danger); color: #000; }
+        .badge.Medium { background: #a6e3a1; color: #000; }
         
         /* Pagination */
         .pagination { display: flex; justify-content: center; align-items: center; gap: 15px; margin-top: 20px; }
@@ -101,11 +102,39 @@
         .modal-content {
             background: var(--bg); width: 60%; max-height: 80vh; border-radius: 12px;
             padding: 30px; overflow-y: auto; position: relative; border: 1px solid #45475a;
-            word-wrap: break-word; /* Prevent horizontal scrolling */
+            word-wrap: break-word;
         }
         .close-btn { position: absolute; top: 15px; right: 20px; cursor: pointer; font-size: 24px; color: var(--danger);}
-        .section-box { background: var(--surface); padding: 15px; border-radius: 8px; margin-bottom: 15px; border-left: 4px solid var(--accent); }
-        .section-box pre { background: var(--bg); padding: 10px; border-radius: 5px; overflow-x: auto; white-space: pre-wrap; word-wrap: break-word; }
+
+        /* Modal Groups & Sections */
+        .group-container {
+            margin-bottom: 25px;
+            padding: 20px;
+            background: rgba(0, 0, 0, 0.15);
+            border-radius: 10px;
+            border: 1px solid #45475a;
+        }
+        body.light-mode .group-container { background: rgba(0, 0, 0, 0.05); }
+        
+        .group-title {
+            margin-top: 0;
+            margin-bottom: 15px;
+            border-bottom: 1px solid #45475a;
+            padding-bottom: 10px;
+        }
+        body.light-mode .group-title { border-bottom: 1px solid #ccc; }
+        
+        .section-box { 
+            margin-bottom: 15px; 
+            padding-left: 10px;
+            border-left: 3px solid #89b4fa;
+        }
+        .section-box:last-child { margin-bottom: 0; }
+        .section-box h3 { color: #cdd6f4; font-size: 16px; margin: 0 0 8px 0; }
+        body.light-mode .section-box h3 { color: #333; }
+        .section-box p, .section-box ul, .section-box ol { margin: 0; color: #a6adc8; }
+        body.light-mode .section-box p, body.light-mode .section-box ul, body.light-mode .section-box ol { color: #555; }
+        .section-box pre { background: rgba(0,0,0,0.2); padding: 10px; border-radius: 5px; overflow-x: auto; white-space: pre-wrap; word-wrap: break-word; margin: 0; }
         .section-box code { font-family: Consolas, monospace; }
         
         .download-group { margin-bottom: 20px; display: flex; gap: 10px; }
@@ -119,6 +148,7 @@
             .sidebar { width: auto; border-right: none; border-bottom: 1px solid #45475a; }
             .modal-content { width: 95%; padding: 20px; }
             .header { flex-direction: column; gap: 15px; }
+            .group-container { padding: 15px; }
         }
     </style>
 </head>
@@ -140,9 +170,9 @@
             </div>
             <select id="severityFilter">
                 <option value="">Tất cả mức độ</option>
-                <option value="Critical">Critical</option>
-                <option value="High">High</option>
-                <option value="Medium">Medium</option>
+                <option value="Medium to High">Trung bình đến Cao</option>
+                <option value="High to Critical">Cao đến Nghiêm trọng</option>
+                <option value="Critical">Nghiêm trọng</option>
             </select>
         </div>
 
@@ -164,7 +194,8 @@
                 <a href="#" id="dl-json" class="btn btn-json">📥 Tải JSON</a>
             </div>
             <h1 id="m-title" style="color: var(--accent); margin-top: 0;"></h1>
-            <p><strong>CWE/CVE:</strong> <span id="m-cwe"></span></p>
+            <p style="margin-bottom: 5px;"><strong>CWE:</strong> <span id="m-cwe"></span></p>
+            <p style="margin-top: 0;"><strong>CVE:</strong> <span id="m-cve"></span></p>
             
             <div id="modalSections"></div>
         </div>
@@ -185,56 +216,78 @@
         const dict = {
             vi: {
                 searchPlaceholder: "Tìm kiếm lỗ hổng...",
-                allSeverity: "Tất cả mức độ",
+                filters: {
+                    all: "Tất cả mức độ",
+                    medHigh: "Trung bình đến Cao",
+                    highCrit: "Cao đến Nghiêm trọng",
+                    crit: "Nghiêm trọng"
+                },
                 downloadMd: "📥 Tải Markdown",
                 downloadJson: "📥 Tải JSON",
                 prev: "⬅️ Trước",
                 next: "Sau ➡️",
                 page: "Trang",
+                groups: {
+                    understanding: "🧠 Hiểu về lỗ hổng",
+                    exploitation: "⚔️ Khai thác",
+                    defense: "🛡️ Phòng thủ",
+                    lab: "🧪 Thực hành Lab",
+                    meta: "📚 Tham khảo & Meta"
+                },
                 fields: {
-                    description: "📌 Mô tả",
-                    root_cause: "📌 Nguyên nhân gốc rễ (Root Cause)",
-                    prerequisites: "📌 Điều kiện tiền đề",
-                    attack_surface: "📌 Bề mặt tấn công",
-                    impact: "⚠️ Tác động (Impact)",
-                    exploit_flow: "🔥 Luồng khai thác",
-                    exploit_payloads: "🔥 Payloads",
-                    exploit_variants: "🔥 Các biến thể",
-                    defense_mitigation: "🛡️ Giảm thiểu",
-                    defense_best_practices: "🛡️ Thực hành tốt nhất",
-                    defense_detection: "🛡️ Phát hiện",
-                    defense_common_mistakes: "🛡️ Lỗi phổ biến",
-                    lab_setup: "🧪 Cài đặt Lab",
-                    lab_steps: "🧪 Các bước Lab",
-                    lab_verification: "🧪 Xác minh Lab",
-                    references: "📚 Tài liệu tham khảo"
+                    description: "Mô tả",
+                    root_cause: "Nguyên nhân gốc rễ",
+                    mechanism: "Cơ chế hoạt động",
+                    attack_surface: "Bề mặt tấn công",
+                    exploit_prerequisites: "Điều kiện tiền đề",
+                    exploit_flow: "Luồng khai thác",
+                    exploit_payloads: "Payloads",
+                    defense_mitigation: "Giảm thiểu",
+                    defense_best_practices: "Thực hành tốt nhất",
+                    defense_detection: "Phát hiện",
+                    defense_common_mistakes: "Lỗi phổ biến",
+                    lab_setup: "Cài đặt Lab",
+                    lab_steps: "Các bước Lab",
+                    lab_verification: "Xác minh Lab",
+                    references: "Tài liệu tham khảo"
                 }
             },
             en: {
                 searchPlaceholder: "Search vulnerabilities...",
-                allSeverity: "All severities",
+                filters: {
+                    all: "All severities",
+                    medHigh: "Medium to High",
+                    highCrit: "High to Critical",
+                    crit: "Critical"
+                },
                 downloadMd: "📥 Download Markdown",
                 downloadJson: "📥 Download JSON",
                 prev: "⬅️ Prev",
                 next: "Next ➡️",
                 page: "Page",
+                groups: {
+                    understanding: "🧠 Understanding",
+                    exploitation: "⚔️ Exploitation",
+                    defense: "🛡️ Defense",
+                    lab: "🧪 Lab Setup",
+                    meta: "📚 References & Meta"
+                },
                 fields: {
-                    description: "📌 Description",
-                    root_cause: "📌 Root Cause",
-                    prerequisites: "📌 Prerequisites",
-                    attack_surface: "📌 Attack Surface",
-                    impact: "⚠️ Impact",
-                    exploit_flow: "🔥 Exploit Flow",
-                    exploit_payloads: "🔥 Payloads",
-                    exploit_variants: "🔥 Variants",
-                    defense_mitigation: "🛡️ Mitigation",
-                    defense_best_practices: "🛡️ Best Practices",
-                    defense_detection: "🛡️ Detection",
-                    defense_common_mistakes: "🛡️ Common Mistakes",
-                    lab_setup: "🧪 Lab Setup",
-                    lab_steps: "🧪 Lab Steps",
-                    lab_verification: "🧪 Lab Verification",
-                    references: "📚 References"
+                    description: "Description",
+                    root_cause: "Root Cause",
+                    mechanism: "Mechanism",
+                    attack_surface: "Attack Surface",
+                    exploit_prerequisites: "Prerequisites",
+                    exploit_flow: "Exploit Flow",
+                    exploit_payloads: "Payloads",
+                    defense_mitigation: "Mitigation",
+                    defense_best_practices: "Best Practices",
+                    defense_detection: "Detection",
+                    defense_common_mistakes: "Common Mistakes",
+                    lab_setup: "Lab Setup",
+                    lab_steps: "Lab Steps",
+                    lab_verification: "Lab Verification",
+                    references: "References"
                 }
             }
         };
@@ -266,7 +319,13 @@
             document.getElementById('themeToggle').innerText = currentTheme === 'dark' ? '🌙 Dark' : '☀️ Light';
             document.getElementById('langToggle').innerText = currentLang === 'vi' ? '🇻🇳 VI' : '🇬🇧 EN';
             document.getElementById('searchInput').placeholder = t.searchPlaceholder;
-            document.getElementById('severityFilter').options[0].text = t.allSeverity;
+            
+            const sel = document.getElementById('severityFilter');
+            sel.options[0].text = t.filters.all;
+            sel.options[1].text = t.filters.medHigh;
+            sel.options[2].text = t.filters.highCrit;
+            sel.options[3].text = t.filters.crit;
+
             document.getElementById('dl-md').innerText = t.downloadMd;
             document.getElementById('dl-json').innerText = t.downloadJson;
             document.getElementById('prevPage').innerText = t.prev;
@@ -370,7 +429,15 @@
             }
 
             items.forEach(item => {
-                const severClass = item.severity?.includes("High") ? "High" : (item.severity?.includes("Critical") ? "Critical" : "Medium");
+                const sevRaw = (item.severity || '').toLowerCase();
+                let severClass = "Medium"; // default
+                
+                if (sevRaw.includes("critical") || sevRaw.includes("nghiêm trọng") || sevRaw.includes("nghiem trong")) {
+                    severClass = "Critical";
+                } else if (sevRaw.includes("high") || sevRaw.includes("cao")) {
+                    severClass = "High";
+                }
+
                 grid.innerHTML += `
                     <div class="card" onclick="openDetail(${item.id})">
                         <span class="badge ${severClass}">${item.severity || 'N/A'}</span>
@@ -392,7 +459,17 @@
                  .replace(/'/g, "&#039;");
         }
 
-        function buildSection(title, content, format = 'text', borderColor = 'var(--accent)') {
+        function buildGroup(title, contentHtml, borderColor) {
+            if (!contentHtml) return '';
+            return `
+                <div class="group-container" style="border-top: 3px solid ${borderColor}">
+                    <h2 class="group-title" style="color: ${borderColor};">${title}</h2>
+                    ${contentHtml}
+                </div>
+            `;
+        }
+
+        function buildSection(title, content, format = 'text') {
             if (!content || (Array.isArray(content) && content.length === 0)) return '';
             
             let body = '';
@@ -413,8 +490,8 @@
             }
 
             return `
-                <div class="section-box" style="border-left-color: ${borderColor}">
-                    <h3 style="margin-top:0">${title}</h3>
+                <div class="section-box">
+                    <h3>${title}</h3>
                     ${body}
                 </div>
             `;
@@ -431,42 +508,59 @@
                     detailCache[id] = data;
                 }
 
-                // Title & CWE
-                document.getElementById('m-title').innerText = data?.name || data?.title || 'Unknown';
-                document.getElementById('m-cwe').innerText = `${data?.cwe || 'N/A'} | ${data?.cve || 'N/A'}`;
+                // Tiêu đề & CWE/CVE
+                const cwe = data?.identification?.cwe || data?.cwe || 'N/A';
+                const cve = data?.identification?.cve || data?.cve || 'N/A';
+                document.getElementById('m-title').innerText = data?.topic || data?.name || data?.title || 'Unknown';
+                document.getElementById('m-cwe').innerText = cwe;
+                document.getElementById('m-cve').innerText = cve;
                 
+                const g = dict[currentLang].groups;
                 const t = dict[currentLang].fields;
-                let html = '';
-
-                // Descriptions
-                html += buildSection(t.description, data?.description);
-                html += buildSection(t.root_cause, data?.root_cause);
-                html += buildSection(t.prerequisites, data?.prerequisites, 'list');
-                html += buildSection(t.attack_surface, data?.attack_surface);
                 
-                // Impact
-                html += buildSection(t.impact, data?.impact, 'text', 'var(--danger)');
-
-                // Exploit
-                html += buildSection(t.exploit_flow, data?.exploit?.flow, 'ordered', 'var(--danger)');
-                html += buildSection(t.exploit_payloads, data?.exploit?.payloads, 'code', 'var(--danger)');
-                html += buildSection(t.exploit_variants, data?.exploit?.variants, 'list', 'var(--danger)');
-
+                // Understanding
+                let uHtml = '';
+                const uSrc = data?.understanding || data; // Fallback to root for old schema
+                uHtml += buildSection(t.description, uSrc?.description);
+                uHtml += buildSection(t.root_cause, uSrc?.root_cause);
+                uHtml += buildSection(t.mechanism, uSrc?.mechanism);
+                uHtml += buildSection(t.attack_surface, uSrc?.attack_surface);
+                
+                // Exploitation
+                let eHtml = '';
+                const eSrc = data?.exploitation || data?.exploit || data;
+                eHtml += buildSection(t.exploit_prerequisites, eSrc?.prerequisites, 'list');
+                eHtml += buildSection(t.exploit_flow, eSrc?.flow, 'ordered');
+                eHtml += buildSection(t.exploit_payloads, eSrc?.payloads, 'code');
+                
                 // Defense
-                html += buildSection(t.defense_mitigation, data?.defense?.mitigation, 'list', 'var(--warning)');
-                html += buildSection(t.defense_best_practices, data?.defense?.best_practices, 'list', 'var(--warning)');
-                html += buildSection(t.defense_detection, data?.defense?.detection, 'list', 'var(--warning)');
-                html += buildSection(t.defense_common_mistakes, data?.defense?.common_mistakes, 'list', 'var(--warning)');
+                let dHtml = '';
+                const dSrc = data?.defense || data;
+                dHtml += buildSection(t.defense_mitigation, dSrc?.mitigation, 'text');
+                dHtml += buildSection(t.defense_best_practices, dSrc?.best_practices, 'list');
+                dHtml += buildSection(t.defense_detection, dSrc?.detection, 'text');
+                dHtml += buildSection(t.defense_common_mistakes, dSrc?.common_mistakes, 'list');
 
                 // Lab
-                html += buildSection(t.lab_setup, data?.lab?.setup, 'text', '#a6e3a1');
-                html += buildSection(t.lab_steps, data?.lab?.steps, 'ordered', '#a6e3a1');
-                html += buildSection(t.lab_verification, data?.lab?.verification, 'text', '#a6e3a1');
+                let lHtml = '';
+                const lSrc = data?.lab || data;
+                lHtml += buildSection(t.lab_setup, lSrc?.setup, 'text');
+                lHtml += buildSection(t.lab_steps, lSrc?.steps, 'text');
+                lHtml += buildSection(t.lab_verification, lSrc?.verification, 'text');
 
                 // References
-                html += buildSection(t.references, data?.references, 'links', '#b4befe');
+                let rHtml = '';
+                rHtml += buildSection(t.references, data?.references, 'links');
 
-                document.getElementById('modalSections').innerHTML = html;
+                // Combine into Groups
+                let finalHtml = '';
+                finalHtml += buildGroup(g.understanding, uHtml, 'var(--accent)');
+                finalHtml += buildGroup(g.exploitation, eHtml, 'var(--danger)');
+                finalHtml += buildGroup(g.defense, dHtml, 'var(--warning)');
+                finalHtml += buildGroup(g.lab, lHtml, '#a6e3a1');
+                finalHtml += buildGroup(g.meta, rHtml, '#cba6f7');
+
+                document.getElementById('modalSections').innerHTML = finalHtml;
 
                 document.getElementById('dl-md').href = `${API_BASE}/${id}/download?format=md`;
                 document.getElementById('dl-json').href = `${API_BASE}/${id}/download?format=json`;
