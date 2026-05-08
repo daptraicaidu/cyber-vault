@@ -1,0 +1,181 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>My Cyber Vault</title>
+    <style>
+        :root {
+            --bg: #1e1e2e;
+            --surface: #2a2b3d;
+            --text: #cdd6f4;
+            --accent: #89b4fa;
+            --danger: #f38ba8;
+            --warning: #f9e2af;
+        }
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: var(--bg); color: var(--text);
+            margin: 0; display: flex; height: 100vh;
+        }
+        /* Sidebar Filter */
+        .sidebar {
+            width: 280px; background-color: var(--surface); padding: 20px;
+            border-right: 1px solid #45475a; display: flex; flex-direction: column; gap: 15px;
+        }
+        .sidebar input, .sidebar select {
+            padding: 10px; border-radius: 5px; border: 1px solid #45475a;
+            background: var(--bg); color: var(--text); outline: none;
+        }
+        /* Main Content */
+        .main {
+            flex: 1; padding: 30px; overflow-y: auto;
+        }
+        .grid {
+            display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 20px;
+        }
+        .card {
+            background: var(--surface); padding: 20px; border-radius: 10px;
+            cursor: pointer; transition: transform 0.2s, border 0.2s; border: 1px solid transparent;
+        }
+        .card:hover { transform: translateY(-5px); border-color: var(--accent); }
+        .badge {
+            display: inline-block; padding: 4px 8px; border-radius: 4px; font-size: 12px; font-weight: bold; margin-bottom: 10px;
+        }
+        .badge.High, .badge.Critical { background: var(--danger); color: #000; }
+        .badge.Medium { background: var(--warning); color: #000; }
+        
+        /* Modal Chi tiết */
+        .modal {
+            display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.7); justify-content: center; align-items: center;
+        }
+        .modal-content {
+            background: var(--bg); width: 60%; max-height: 80vh; border-radius: 12px;
+            padding: 30px; overflow-y: auto; position: relative; border: 1px solid #45475a;
+        }
+        .close-btn { position: absolute; top: 15px; right: 20px; cursor: pointer; font-size: 24px; color: var(--danger);}
+        .section-box { background: var(--surface); padding: 15px; border-radius: 8px; margin-bottom: 15px; border-left: 4px solid var(--accent); }
+        
+        .download-group { margin-bottom: 20px; display: flex; gap: 10px; }
+        .btn { padding: 8px 15px; border-radius: 5px; text-decoration: none; font-weight: bold; cursor: pointer; border: none;}
+        .btn-md { background: #313244; color: var(--text); }
+        .btn-json { background: var(--accent); color: #000; }
+    </style>
+</head>
+<body>
+
+    <div class="sidebar">
+        <h2>Cyber Vault</h2>
+        <input type="text" id="searchInput" placeholder="Tìm kiếm lỗ hổng...">
+        <select id="severityFilter">
+            <option value="">Tất cả mức độ</option>
+            <option value="Critical">Critical</option>
+            <option value="High">High</option>
+            <option value="Medium">Medium</option>
+        </select>
+    </div>
+
+    <div class="main">
+        <div class="grid" id="vaultGrid">
+            </div>
+    </div>
+
+    <div class="modal" id="detailModal">
+        <div class="modal-content">
+            <span class="close-btn" onclick="closeModal()">&times;</span>
+            <div class="download-group">
+                <a href="#" id="dl-md" class="btn btn-md">📥 Tải Markdown</a>
+                <a href="#" id="dl-json" class="btn btn-json">📥 Tải JSON</a>
+            </div>
+            <h1 id="m-title" style="color: var(--accent);">Tên lỗ hổng</h1>
+            <p><strong>CWE/CVE:</strong> <span id="m-cwe"></span></p>
+            
+            <div class="section-box">
+                <h3 style="margin-top:0">📌 Mô tả & Nguyên nhân gốc rễ (Root Cause)</h3>
+                <p id="m-desc"></p>
+                <p id="m-rootcause"></p>
+            </div>
+
+            <div class="section-box" style="border-left-color: var(--danger)">
+                <h3 style="margin-top:0">⚠️ Tác động (Impact)</h3>
+                <p id="m-impact"></p>
+            </div>
+
+            <div class="section-box" style="border-left-color: var(--warning)">
+                <h3 style="margin-top:0">🛡️ Phòng thủ & Giảm thiểu (Defense)</h3>
+                <ul id="m-defense"></ul>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const API_BASE = "/api/vault"; // Nếu cấu hình Nginx chuẩn, dùng path tương đối thế này là đẹp nhất
+
+        async function fetchVault() {
+            const search = document.getElementById('searchInput').value;
+            const severity = document.getElementById('severityFilter').value;
+            
+            let url = `${API_BASE}?lang=vi`;
+            if (search) url += `&search=${search}`;
+            if (severity) url += `&severity=${severity}`;
+
+            const res = await fetch(url);
+            const data = await res.json();
+            renderGrid(data);
+        }
+
+        function renderGrid(items) {
+            const grid = document.getElementById('vaultGrid');
+            grid.innerHTML = '';
+            items.forEach(item => {
+                const severClass = item.severity && item.severity.includes("High") ? "High" : (item.severity && item.severity.includes("Critical") ? "Critical" : "Medium");
+                
+                grid.innerHTML += `
+                    <div class="card" onclick="openDetail(${item.id})">
+                        <span class="badge ${severClass}">${item.severity || 'N/A'}</span>
+                        <h3 style="margin:0 0 10px 0">${item.title}</h3>
+                        <p style="font-size: 14px; color: #a6adc8">${item.category}</p>
+                    </div>
+                `;
+            });
+        }
+
+        async function openDetail(id) {
+            // Lấy data chi tiết file JSON
+            const res = await fetch(`${API_BASE}/${id}/content`);
+            const data = await res.json();
+
+            // Đổ dữ liệu vào Modal
+            document.getElementById('m-title').innerText = data.name || data.title;
+            document.getElementById('m-cwe').innerText = `${data.cwe} | ${data.cve}`;
+            document.getElementById('m-desc').innerText = data.description;
+            document.getElementById('m-rootcause').innerText = data.root_cause;
+            document.getElementById('m-impact').innerText = data.impact;
+            
+            const defUl = document.getElementById('m-defense');
+            defUl.innerHTML = '';
+            if (data.defense && data.defense.mitigation) {
+                data.defense.mitigation.forEach(m => defUl.innerHTML += `<li>${m}</li>`);
+            }
+
+            // Gắn link download
+            document.getElementById('dl-md').href = `${API_BASE}/${id}/download?format=md`;
+            document.getElementById('dl-json').href = `${API_BASE}/${id}/download?format=json`;
+
+            document.getElementById('detailModal').style.display = 'flex';
+        }
+
+        function closeModal() {
+            document.getElementById('detailModal').style.display = 'none';
+        }
+
+        // Bắt sự kiện tìm kiếm
+        document.getElementById('searchInput').addEventListener('input', fetchVault);
+        document.getElementById('severityFilter').addEventListener('change', fetchVault);
+
+        // Load lần đầu
+        fetchVault();
+    </script>
+</body>
+</html>
