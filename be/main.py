@@ -35,14 +35,11 @@ def get_vault_items(search: str = None, severity: str = None, lang: str = 'vi', 
         params.extend([f"%{search}%", f"%{search}%"])
     if severity:
         if severity == "Medium to High":
-            base_query += " AND (severity LIKE '%Medium%' OR severity LIKE '%High%')"
+            base_query += " AND (severity LIKE '%Medium%' OR severity LIKE '%High%' OR severity LIKE '%Trung bình%' OR severity LIKE '%Cao%')"
         elif severity == "High to Critical":
-            base_query += " AND (severity LIKE '%High%' OR severity LIKE '%Critical%')"
+            base_query += " AND (severity LIKE '%High%' OR severity LIKE '%Critical%' OR severity LIKE '%Cao%' OR severity LIKE '%Nghiêm trọng%' OR severity LIKE '%Nghiem trong%')"
         elif severity == "Critical":
-            base_query += " AND severity LIKE '%Critical%'"
-        else:
-            base_query += " AND severity LIKE ?"
-            params.append(f"%{severity}%")
+            base_query += " AND (severity LIKE '%Critical%' OR severity LIKE '%Nghiêm trọng%' OR severity LIKE '%Nghiem trong%')"
 
     # Count total items
     count_query = f"SELECT COUNT(*) as total {base_query}"
