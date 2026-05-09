@@ -331,9 +331,12 @@
             
             const sel = document.getElementById('severityFilter');
             sel.options[0].text = t.filters.all;
-            sel.options[1].text = t.filters.medHigh;
-            sel.options[2].text = t.filters.highCrit;
-            sel.options[3].text = t.filters.crit;
+            sel.options[1].text = t.filters.low;
+            sel.options[2].text = t.filters.med;
+            sel.options[3].text = t.filters.medHigh;
+            sel.options[4].text = t.filters.high;
+            sel.options[5].text = t.filters.highCrit;
+            sel.options[6].text = t.filters.crit;
 
             document.getElementById('dl-md').innerText = t.downloadMd;
             document.getElementById('dl-json').innerText = t.downloadJson;
