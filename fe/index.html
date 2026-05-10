@@ -56,7 +56,7 @@
         
         /* Sidebar Filter */
         .sidebar {
-            width: 340px; background-color: var(--surface); padding: 20px;
+            width: 400px; background-color: var(--surface); padding: 20px;
             border-right: 1px solid #45475a; display: flex; flex-direction: column; gap: 15px;
         }
         .search-container { position: relative; }
@@ -211,13 +211,11 @@
     <div class="modal" id="detailModal">
         <div class="modal-content">
             <span class="close-btn" onclick="closeModal()">&times;</span>
+            <h1 id="m-title" style="color: var(--accent); margin-top: 0; padding-right: 35px;"></h1>
             <div class="download-group">
                 <a href="#" id="dl-md" class="btn btn-md">📥 Tải Markdown</a>
                 <a href="#" id="dl-json" class="btn btn-json">📥 Tải JSON</a>
             </div>
-            <h1 id="m-title" style="color: var(--accent); margin-top: 0;"></h1>
-            <p style="margin-bottom: 5px;"><strong>CWE:</strong> <span id="m-cwe"></span></p>
-            <p style="margin-top: 0;"><strong>CVE:</strong> <span id="m-cve"></span></p>
             
             <div id="modalSections"></div>
         </div>
@@ -256,6 +254,7 @@
                 next: "Sau ➡️",
                 page: "Trang",
                 groups: {
+                    identification: "🆔 Nhận diện",
                     understanding: "🧠 Hiểu về lỗ hổng",
                     exploitation: "⚔️ Khai thác",
                     defense: "🛡️ Phòng thủ",
@@ -263,10 +262,18 @@
                     meta: "📚 Tham khảo & Meta"
                 },
                 fields: {
+                    category: "Danh mục",
+                    cwe: "CWE",
+                    cve: "CVE",
+                    severity: "Mức độ",
                     description: "Mô tả",
                     root_cause: "Nguyên nhân gốc rễ",
                     mechanism: "Cơ chế hoạt động",
+                    affected_systems: "Hệ thống bị ảnh hưởng",
+                    affected_components: "Thành phần bị ảnh hưởng",
+                    impact: "Tác động",
                     attack_surface: "Bề mặt tấn công",
+                    variants: "Biến thể",
                     exploit_prerequisites: "Điều kiện tiền đề",
                     exploit_flow: "Luồng khai thác",
                     exploit_payloads: "Payloads",
@@ -277,7 +284,12 @@
                     lab_setup: "Cài đặt Lab",
                     lab_steps: "Các bước Lab",
                     lab_verification: "Xác minh Lab",
-                    references: "Tài liệu tham khảo"
+                    references: "Tài liệu tham khảo",
+                    meta_difficulty: "Độ khó",
+                    meta_frequency: "Tần suất",
+                    meta_tags: "Tags",
+                    meta_notes: "Ghi chú",
+                    meta_related: "Liên quan"
                 }
             },
             en: {
@@ -300,6 +312,7 @@
                 next: "Next ➡️",
                 page: "Page",
                 groups: {
+                    identification: "🆔 Identification",
                     understanding: "🧠 Understanding",
                     exploitation: "⚔️ Exploitation",
                     defense: "🛡️ Defense",
@@ -307,10 +320,18 @@
                     meta: "📚 References & Meta"
                 },
                 fields: {
+                    category: "Category",
+                    cwe: "CWE",
+                    cve: "CVE",
+                    severity: "Severity",
                     description: "Description",
                     root_cause: "Root Cause",
                     mechanism: "Mechanism",
+                    affected_systems: "Affected Systems",
+                    affected_components: "Affected Components",
+                    impact: "Impact",
                     attack_surface: "Attack Surface",
+                    variants: "Variants",
                     exploit_prerequisites: "Prerequisites",
                     exploit_flow: "Exploit Flow",
                     exploit_payloads: "Payloads",
@@ -321,7 +342,12 @@
                     lab_setup: "Lab Setup",
                     lab_steps: "Lab Steps",
                     lab_verification: "Lab Verification",
-                    references: "References"
+                    references: "References",
+                    meta_difficulty: "Difficulty",
+                    meta_frequency: "Frequency",
+                    meta_tags: "Tags",
+                    meta_notes: "Notes",
+                    meta_related: "Related"
                 }
             }
         };
@@ -570,22 +596,36 @@
             `;
         }
 
-        function buildSection(title, content, format = 'text') {
-            if (!content || (Array.isArray(content) && content.length === 0)) return '';
+        function buildSection(title, content, format = 'auto') {
+            const emptyText = currentLang === 'vi' ? 'Không có thông tin' : 'No information available';
             
+            if (!content || (Array.isArray(content) && content.length === 0) || content === '...' || (Array.isArray(content) && content.length === 1 && content[0] === '...')) {
+                return `
+                <div class="section-box">
+                    <h3>${title}</h3>
+                    <p style="color: #6c7086; font-style: italic; margin-top: 4px;">${emptyText}</p>
+                </div>
+                `;
+            }
+
+            let finalFormat = format;
+            if (format === 'auto') {
+                finalFormat = Array.isArray(content) ? 'list' : 'text';
+            }
+
             let body = '';
-            if (format === 'text') {
+            if (finalFormat === 'text') {
                 body = `<p>${escapeHtml(content)}</p>`;
             } else {
                 if (!Array.isArray(content)) content = [content];
                 
-                if (format === 'list') {
+                if (finalFormat === 'list') {
                     body = `<ul>${content.map(c => `<li>${escapeHtml(c)}</li>`).join('')}</ul>`;
-                } else if (format === 'ordered') {
+                } else if (finalFormat === 'ordered') {
                     body = `<ol>${content.map(c => `<li>${escapeHtml(c)}</li>`).join('')}</ol>`;
-                } else if (format === 'code') {
+                } else if (finalFormat === 'code') {
                     body = content.map(c => `<pre><code>${escapeHtml(c)}</code></pre>`).join('');
-                } else if (format === 'links') {
+                } else if (finalFormat === 'links') {
                     body = `<ul>${content.map(c => `<li><a href="${escapeHtml(c)}" target="_blank" style="color: var(--accent);">${escapeHtml(c)}</a></li>`).join('')}</ul>`;
                 }
             }
@@ -609,52 +649,68 @@
                     detailCache[id] = data;
                 }
 
-                // Tiêu đề & CWE/CVE
-                const cwe = data?.identification?.cwe || data?.cwe || 'N/A';
-                const cve = data?.identification?.cve || data?.cve || 'N/A';
+                // Tiêu đề
                 document.getElementById('m-title').innerText = data?.topic || data?.name || data?.title || 'Unknown';
-                document.getElementById('m-cwe').innerText = cwe;
-                document.getElementById('m-cve').innerText = cve;
                 
                 const g = dict[currentLang].groups;
                 const t = dict[currentLang].fields;
                 
+                // Identification
+                let iHtml = '';
+                const iSrc = data?.identification || data;
+                iHtml += buildSection(t.category, iSrc?.category, 'auto');
+                iHtml += buildSection(t.cwe, iSrc?.cwe, 'auto');
+                iHtml += buildSection(t.cve, iSrc?.cve, 'auto');
+                iHtml += buildSection(t.severity, iSrc?.severity, 'auto');
+
                 // Understanding
                 let uHtml = '';
                 const uSrc = data?.understanding || data; // Fallback to root for old schema
-                uHtml += buildSection(t.description, uSrc?.description);
-                uHtml += buildSection(t.root_cause, uSrc?.root_cause);
-                uHtml += buildSection(t.mechanism, uSrc?.mechanism);
-                uHtml += buildSection(t.attack_surface, uSrc?.attack_surface);
+                uHtml += buildSection(t.description, uSrc?.description, 'auto');
+                uHtml += buildSection(t.root_cause, uSrc?.root_cause, 'auto');
+                uHtml += buildSection(t.mechanism, uSrc?.mechanism, 'auto');
+                uHtml += buildSection(t.affected_systems, uSrc?.affected_systems, 'auto');
+                uHtml += buildSection(t.affected_components, uSrc?.affected_components, 'auto');
+                uHtml += buildSection(t.impact, uSrc?.impact, 'auto');
+                uHtml += buildSection(t.attack_surface, uSrc?.attack_surface, 'auto');
+                uHtml += buildSection(t.variants, uSrc?.variants, 'auto');
                 
                 // Exploitation
                 let eHtml = '';
                 const eSrc = data?.exploitation || data?.exploit || data;
-                eHtml += buildSection(t.exploit_prerequisites, eSrc?.prerequisites, 'list');
+                eHtml += buildSection(t.exploit_prerequisites, eSrc?.prerequisites, 'auto');
                 eHtml += buildSection(t.exploit_flow, eSrc?.flow, 'ordered');
                 eHtml += buildSection(t.exploit_payloads, eSrc?.payloads, 'code');
                 
                 // Defense
                 let dHtml = '';
                 const dSrc = data?.defense || data;
-                dHtml += buildSection(t.defense_mitigation, dSrc?.mitigation, 'text');
-                dHtml += buildSection(t.defense_best_practices, dSrc?.best_practices, 'list');
-                dHtml += buildSection(t.defense_detection, dSrc?.detection, 'text');
-                dHtml += buildSection(t.defense_common_mistakes, dSrc?.common_mistakes, 'list');
+                dHtml += buildSection(t.defense_mitigation, dSrc?.mitigation, 'auto');
+                dHtml += buildSection(t.defense_best_practices, dSrc?.best_practices, 'auto');
+                dHtml += buildSection(t.defense_detection, dSrc?.detection, 'auto');
+                dHtml += buildSection(t.defense_common_mistakes, dSrc?.common_mistakes, 'auto');
 
                 // Lab
                 let lHtml = '';
                 const lSrc = data?.lab || data;
-                lHtml += buildSection(t.lab_setup, lSrc?.setup, 'text');
-                lHtml += buildSection(t.lab_steps, lSrc?.steps, 'text');
-                lHtml += buildSection(t.lab_verification, lSrc?.verification, 'text');
+                lHtml += buildSection(t.lab_setup, lSrc?.setup, 'auto');
+                lHtml += buildSection(t.lab_steps, lSrc?.steps, 'auto');
+                lHtml += buildSection(t.lab_verification, lSrc?.verification, 'auto');
 
-                // References
+                // References & Meta
                 let rHtml = '';
                 rHtml += buildSection(t.references, data?.references, 'links');
+                
+                const mSrc = data?.meta || data;
+                rHtml += buildSection(t.meta_difficulty, mSrc?.difficulty, 'auto');
+                rHtml += buildSection(t.meta_frequency, mSrc?.frequency, 'auto');
+                rHtml += buildSection(t.meta_tags, mSrc?.tags, 'auto');
+                rHtml += buildSection(t.meta_notes, mSrc?.notes, 'auto');
+                rHtml += buildSection(t.meta_related, mSrc?.related, 'auto');
 
                 // Combine into Groups
                 let finalHtml = '';
+                finalHtml += buildGroup(g.identification, iHtml, '#f5c2e7');
                 finalHtml += buildGroup(g.understanding, uHtml, 'var(--accent)');
                 finalHtml += buildGroup(g.exploitation, eHtml, 'var(--danger)');
                 finalHtml += buildGroup(g.defense, dHtml, 'var(--warning)');
@@ -679,6 +735,13 @@
 
         // Bootstrap
         initThemeLang();
+        
+        document.getElementById('detailModal').addEventListener('click', function(e) {
+            if (e.target === this) {
+                closeModal();
+            }
+        });
+        
         fetchVault();
     </script>
 </body>
