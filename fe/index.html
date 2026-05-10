@@ -8,6 +8,7 @@
         :root {
             --bg: #1e1e2e;
             --surface: #2a2b3d;
+            --dropdown-bg: #313244;
             --text: #cdd6f4;
             --accent: #89b4fa;
             --danger: #f38ba8;
@@ -16,6 +17,7 @@
         body.light-mode {
             --bg: #f5f5f5;
             --surface: #ffffff;
+            --dropdown-bg: #f8f9fa;
             --text: #333333;
             --accent: #007bff;
             --danger: #dc3545;
@@ -26,6 +28,15 @@
             background-color: var(--bg); color: var(--text);
             margin: 0; display: flex; flex-direction: column; height: 100vh;
         }
+        
+        /* Custom Scrollbar */
+        ::-webkit-scrollbar { width: 8px; height: 8px; }
+        ::-webkit-scrollbar-track { background: var(--bg); }
+        ::-webkit-scrollbar-thumb { background: #45475a; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: #585b70; }
+        body.light-mode ::-webkit-scrollbar-track { background: #e0e0e0; }
+        body.light-mode ::-webkit-scrollbar-thumb { background: #adb5bd; }
+        body.light-mode ::-webkit-scrollbar-thumb:hover { background: #6c757d; }
         
         /* Header */
         .header {
@@ -45,7 +56,7 @@
         
         /* Sidebar Filter */
         .sidebar {
-            width: 280px; background-color: var(--surface); padding: 20px;
+            width: 340px; background-color: var(--surface); padding: 20px;
             border-right: 1px solid #45475a; display: flex; flex-direction: column; gap: 15px;
         }
         .search-container { position: relative; }
@@ -58,15 +69,17 @@
         /* Dropdown */
         .dropdown {
             position: absolute; top: 100%; left: 0; right: 0;
-            background: var(--surface); border: 1px solid #45475a;
+            background: var(--dropdown-bg); border: 1px solid #45475a;
             border-radius: 5px; margin-top: 5px; padding: 0;
-            list-style: none; max-height: 200px; overflow-y: auto;
-            z-index: 10; display: none; box-shadow: 0 4px 6px rgba(0,0,0,0.3);
+            list-style: none; max-height: 400px; overflow-y: auto;
+            z-index: 10; display: none; box-shadow: 0 8px 16px rgba(0,0,0,0.4);
         }
+        body.light-mode .dropdown { box-shadow: 0 8px 16px rgba(0,0,0,0.15); border: 1px solid #ddd; }
         .dropdown li {
-            padding: 10px; cursor: pointer; border-bottom: 1px solid #45475a;
+            padding: 12px; cursor: pointer; border-bottom: 1px solid #45475a; display: flex; flex-direction: column; gap: 6px;
         }
-        .dropdown li:hover { background: var(--bg); color: var(--accent); }
+        body.light-mode .dropdown li { border-bottom: 1px solid #eee; }
+        .dropdown li:hover { background: var(--bg); border-left: 3px solid var(--accent); padding-left: 9px; }
         .dropdown li:last-child { border-bottom: none; }
 
         /* Main Content */
@@ -85,6 +98,12 @@
         .badge.High { background: var(--warning); color: #000; }
         .badge.Critical { background: var(--danger); color: #000; }
         .badge.Medium { background: #a6e3a1; color: #000; }
+        .date-badge {
+            display: inline-block; padding: 2px 6px; border-radius: 4px; font-size: 11px; font-weight: bold; margin-left: 8px;
+            vertical-align: middle;
+        }
+        .date-badge.new { background: var(--danger); color: #000; }
+        .date-badge.recent { background: var(--warning); color: #000; }
         
         /* Pagination */
         .pagination { display: flex; justify-content: center; align-items: center; gap: 15px; margin-top: 20px; }
@@ -219,6 +238,9 @@
         const dict = {
             vi: {
                 searchPlaceholder: "Tìm kiếm lỗ hổng...",
+                dateAdded: "Ngày thêm",
+                badgeNew: "Mới",
+                badgeRecent: "Gần đây",
                 filters: {
                     all: "Tất cả mức độ",
                     low: "Thấp",
@@ -260,6 +282,9 @@
             },
             en: {
                 searchPlaceholder: "Search vulnerabilities...",
+                dateAdded: "Added",
+                badgeNew: "New",
+                badgeRecent: "Recent",
                 filters: {
                     all: "All severities",
                     low: "Low",
@@ -364,7 +389,31 @@
                     const dropdown = document.getElementById('searchDropdown');
                     
                     if (results.length > 0) {
-                        dropdown.innerHTML = results.map(r => `<li onclick="selectSearchResult(${r.id})">${r.title}</li>`).join('');
+                        dropdown.innerHTML = results.map(r => {
+                            const dateInfo = processDateInfo(r.date_added);
+                            const t = dict[currentLang];
+                            const dateHtml = dateInfo.formatted ? `<span style="font-size:12px; color:#a6adc8;">${t.dateAdded}: ${dateInfo.formatted}</span>` : '';
+                            const badgeHtml = dateInfo.hasBadge ? `<span class="date-badge ${dateInfo.badgeText === t.badgeNew ? 'new' : 'recent'}">${dateInfo.badgeText}</span>` : '';
+                            
+                            const sevRaw = (r.severity || '').toLowerCase();
+                            let severClass = "Medium";
+                            if (sevRaw.includes("critical") || sevRaw.includes("nghiêm trọng") || sevRaw.includes("nghiem trong")) severClass = "Critical";
+                            else if (sevRaw.includes("high") || sevRaw.includes("cao")) severClass = "High";
+
+                            return `<li onclick="selectSearchResult(${r.id})">
+                                <div style="display:flex; justify-content:space-between; align-items:flex-start;">
+                                    <strong style="color:var(--text);">${r.title}</strong>
+                                    <div style="display:flex; align-items:center;">
+                                        <span class="badge ${severClass}" style="margin-bottom:0; font-size:10px; padding:2px 6px;">${r.severity || 'N/A'}</span>
+                                        ${badgeHtml}
+                                    </div>
+                                </div>
+                                <div style="display:flex; justify-content:space-between; margin-top:2px;">
+                                    <span style="font-size:12px; color:#a6adc8;">${r.category || ''}</span>
+                                    ${dateHtml}
+                                </div>
+                            </li>`;
+                        }).join('');
                         dropdown.style.display = 'block';
                     } else {
                         dropdown.style.display = 'none';
@@ -431,6 +480,37 @@
             }
         }
 
+        function processDateInfo(dateString) {
+            if (!dateString) return { formatted: '', badgeText: '', hasBadge: false };
+            const d = new Date(dateString.replace(' ', 'T'));
+            const today = new Date();
+            today.setHours(0,0,0,0);
+            
+            const itemDate = new Date(d);
+            itemDate.setHours(0,0,0,0);
+            
+            const diffTime = today.getTime() - itemDate.getTime();
+            const diffDays = Math.round(diffTime / (1000 * 3600 * 24));
+            
+            const dd = String(d.getDate()).padStart(2, '0');
+            const mm = String(d.getMonth() + 1).padStart(2, '0');
+            const yyyy = d.getFullYear();
+            const formatted = `${dd}-${mm}-${yyyy}`;
+            
+            let badgeText = '';
+            let hasBadge = false;
+            
+            if (diffDays <= 1) {
+                badgeText = dict[currentLang].badgeNew;
+                hasBadge = true;
+            } else if (diffDays <= 7) {
+                badgeText = dict[currentLang].badgeRecent;
+                hasBadge = true;
+            }
+            
+            return { formatted, badgeText, hasBadge };
+        }
+
         function renderGrid(items) {
             const grid = document.getElementById('vaultGrid');
             grid.innerHTML = '';
@@ -450,11 +530,20 @@
                     severClass = "High";
                 }
 
+                const dateInfo = processDateInfo(item.date_added);
+                const t = dict[currentLang];
+                const badgeHtml = dateInfo.hasBadge ? `<span class="date-badge ${dateInfo.badgeText === t.badgeNew ? 'new' : 'recent'}">${dateInfo.badgeText}</span>` : '';
+                const dateHtml = dateInfo.formatted ? `<p style="font-size: 12px; color: #a6adc8; margin: 5px 0 0 0;">${t.dateAdded}: ${dateInfo.formatted}</p>` : '';
+
                 grid.innerHTML += `
                     <div class="card" onclick="openDetail(${item.id})">
-                        <span class="badge ${severClass}">${item.severity || 'N/A'}</span>
+                        <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 10px;">
+                            <span class="badge ${severClass}" style="margin-bottom: 0;">${item.severity || 'N/A'}</span>
+                            ${badgeHtml}
+                        </div>
                         <h3 style="margin:0 0 10px 0">${item.title}</h3>
-                        <p style="font-size: 14px; color: #a6adc8">${item.category}</p>
+                        <p style="font-size: 14px; color: #a6adc8; margin: 0;">${item.category}</p>
+                        ${dateHtml}
                     </div>
                 `;
             });

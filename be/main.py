@@ -24,7 +24,8 @@ def get_db_connection():
     return conn
 
 @app.get("/api/vault")
-def get_vault_items(search: str = None, severity: str = None, lang: str = 'vi', page: int = Query(1, ge=1), limit: int = Query(20, ge=1)):
+def get_vault_items(search: str = None, severity: str = None, lang: str = 'vi', page: int = Query(1, ge=1)):
+    limit = 20
     conn = get_db_connection()
     
     base_query = "FROM vault_index WHERE format = 'json' AND language = ?"
@@ -71,7 +72,7 @@ def get_vault_items(search: str = None, severity: str = None, lang: str = 'vi', 
 @app.get("/api/vault/search")
 def search_vault_items(q: str = Query(..., min_length=1), lang: str = 'vi'):
     conn = get_db_connection()
-    query = "SELECT id, title FROM vault_index WHERE format = 'json' AND language = ? AND title LIKE ? LIMIT 10"
+    query = "SELECT id, title, category, severity, date_added FROM vault_index WHERE format = 'json' AND language = ? AND title LIKE ? LIMIT 10"
     params = [lang, f"%{q}%"]
     items = conn.execute(query, params).fetchall()
     conn.close()
