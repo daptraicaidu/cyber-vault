@@ -30,6 +30,20 @@ def init_db():
     try:
         conn = get_db_connection()
         conn.execute('''
+            CREATE TABLE IF NOT EXISTS vault_index (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                title TEXT NOT NULL,
+                category TEXT,
+                cwe TEXT,
+                cve TEXT,
+                severity TEXT,
+                language TEXT NOT NULL,
+                format TEXT NOT NULL,
+                file_path TEXT NOT NULL UNIQUE,
+                date_added DATETIME DEFAULT CURRENT_TIMESTAMP
+            )
+        ''')
+        conn.execute('''
             CREATE TABLE IF NOT EXISTS feedback (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 ip_address TEXT NOT NULL,
@@ -87,8 +101,15 @@ def get_vault_items(search: str = None, severity: str = None, lang: str = 'vi', 
     items = conn.execute(items_query, items_params).fetchall()
     conn.close()
     
+    result_items = []
+    for ix in items:
+        item_dict = dict(ix)
+        item_dict.pop('file_path', None)
+        item_dict.pop('format', None)
+        result_items.append(item_dict)
+
     return {
-        "items": [dict(ix) for ix in items],
+        "items": result_items,
         "total_count": total_count,
         "total_pages": total_pages,
         "page": page,
@@ -164,7 +185,15 @@ def get_doc(lang: str = 'vi'):
 
 @app.post("/api/feedback")
 def submit_feedback(request: Request, feedback: FeedbackSubmit):
-    client_ip = request.client.host
+    forwarded_for = request.headers.get("X-Forwarded-For")
+    real_ip = request.headers.get("X-Real-IP")
+    if forwarded_for:
+        client_ip = forwarded_for.split(",")[0].strip()
+    elif real_ip:
+        client_ip = real_ip
+    else:
+        client_ip = request.client.host
+        
     if not client_ip:
         client_ip = "unknown"
         
