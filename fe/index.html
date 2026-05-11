@@ -162,6 +162,25 @@
         body.light-mode .btn-md { background: #e0e0e0; color: #333; }
         .btn-json { background: var(--accent); color: #000; }
 
+        /* Doc & Feedback Modal */
+        .tabs { display: flex; gap: 10px; margin-bottom: 20px; border-bottom: 2px solid #45475a; padding-bottom: 10px;}
+        .tab-btn { flex: 1; padding: 12px; background: transparent; color: var(--text); border: none; border-radius: 8px; cursor: pointer; font-weight: bold; font-size: 16px; transition: 0.3s; }
+        .tab-btn:hover { background: rgba(137, 180, 250, 0.1); }
+        .tab-btn.active { background: var(--accent); color: #000; }
+        .tab-content { display: none; }
+        .tab-content.active { display: block; animation: fadeIn 0.3s; }
+        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+        
+        .form-group { margin-bottom: 15px; }
+        .form-group label { display: block; margin-bottom: 5px; font-weight: bold; color: var(--accent); }
+        .form-group input, .form-group textarea { width: 100%; box-sizing: border-box; padding: 12px; border-radius: 8px; border: 1px solid #45475a; background: var(--bg); color: var(--text); font-family: inherit; }
+        .form-group textarea { resize: vertical; min-height: 100px; }
+        .submit-btn { background: var(--accent); color: #000; border: none; padding: 12px 20px; border-radius: 8px; font-weight: bold; cursor: pointer; width: 100%; font-size: 16px; transition: 0.2s;}
+        .submit-btn:hover { opacity: 0.9; }
+
+        /* Footer */
+        .footer { padding: 15px 30px; text-align: center; background-color: var(--surface); border-top: 1px solid #45475a; color: #a6adc8; font-size: 14px; }
+
         @media (max-width: 768px) {
             .content-wrapper { flex-direction: column; }
             .sidebar { width: auto; border-right: none; border-bottom: 1px solid #45475a; }
@@ -176,6 +195,7 @@
     <div class="header">
         <h1>Cyber Vault</h1>
         <div class="toggles">
+            <button id="docToggle" class="toggle-btn" onclick="openDocModal()">Tài liệu</button>
             <button id="themeToggle" class="toggle-btn">🌙 Dark</button>
             <button id="langToggle" class="toggle-btn">🇻🇳 VI</button>
         </div>
@@ -208,6 +228,46 @@
         </div>
     </div>
 
+    <div class="footer" id="appFooter">
+        &copy; 2026 Cyber Vault. All rights reserved.
+    </div>
+
+    <div class="modal" id="docModal">
+        <div class="modal-content">
+            <span class="close-btn" onclick="closeDocModal()">&times;</span>
+            <div class="tabs">
+                <button class="tab-btn active" id="tabDocBtn" onclick="switchTab('doc')">Tài liệu</button>
+                <button class="tab-btn" id="tabFeedbackBtn" onclick="switchTab('feedback')">Góp ý</button>
+            </div>
+            
+            <div id="tab-doc" class="tab-content active">
+                <div id="docLoading">Đang tải...</div>
+                <div id="docContent" style="display: none;">
+                    <h1 id="docProjectName" style="color: var(--accent); margin-top: 0;"></h1>
+                    <p id="docProjectDesc" style="color: #a6adc8;"></p>
+                    <p style="font-size: 12px; color: #6c7086;" id="docLastUpdated"></p>
+                    <hr style="border: 0; border-top: 1px solid #45475a; margin: 20px 0;">
+                    <h2 id="docMsgTitle" style="color: #cba6f7;"></h2>
+                    <div id="docMsgContent" class="section-box" style="border-left-color: #cba6f7;"></div>
+                </div>
+            </div>
+
+            <div id="tab-feedback" class="tab-content">
+                <form id="feedbackForm" onsubmit="submitFeedback(event)">
+                    <div class="form-group">
+                        <label id="lblFeedbackTitle" for="fbTitle">Tiêu đề</label>
+                        <input type="text" id="fbTitle" required>
+                    </div>
+                    <div class="form-group">
+                        <label id="lblFeedbackContent" for="fbContent">Nội dung</label>
+                        <textarea id="fbContent" required></textarea>
+                    </div>
+                    <button type="submit" class="submit-btn" id="btnSubmitFeedback">Gửi Feedback</button>
+                </form>
+            </div>
+        </div>
+    </div>
+
     <div class="modal" id="detailModal">
         <div class="modal-content">
             <span class="close-btn" onclick="closeModal()">&times;</span>
@@ -235,6 +295,13 @@
         // Translations
         const dict = {
             vi: {
+                docBtn: "Tài liệu",
+                tabDoc: "Tài liệu",
+                tabFeedback: "Góp ý",
+                fbTitle: "Tiêu đề",
+                fbContent: "Nội dung",
+                fbSubmit: "Gửi Feedback",
+                docLoading: "Đang tải...",
                 searchPlaceholder: "Tìm kiếm lỗ hổng...",
                 dateAdded: "Ngày thêm",
                 badgeNew: "Mới",
@@ -293,6 +360,13 @@
                 }
             },
             en: {
+                docBtn: "DOC",
+                tabDoc: "DOC",
+                tabFeedback: "Feedback",
+                fbTitle: "Title",
+                fbContent: "Content",
+                fbSubmit: "Submit Feedback",
+                docLoading: "Loading...",
                 searchPlaceholder: "Search vulnerabilities...",
                 dateAdded: "Added",
                 badgeNew: "New",
@@ -378,6 +452,12 @@
             const t = dict[currentLang];
             document.getElementById('themeToggle').innerText = currentTheme === 'dark' ? '🌙 Dark' : '☀️ Light';
             document.getElementById('langToggle').innerText = currentLang === 'vi' ? '🇻🇳 VI' : '🇬🇧 EN';
+            document.getElementById('docToggle').innerText = t.docBtn;
+            document.getElementById('tabDocBtn').innerText = t.tabDoc;
+            document.getElementById('tabFeedbackBtn').innerText = t.tabFeedback;
+            document.getElementById('lblFeedbackTitle').innerText = t.fbTitle;
+            document.getElementById('lblFeedbackContent').innerText = t.fbContent;
+            document.getElementById('btnSubmitFeedback').innerText = t.fbSubmit;
             document.getElementById('searchInput').placeholder = t.searchPlaceholder;
             
             const sel = document.getElementById('severityFilter');
@@ -741,6 +821,99 @@
                 closeModal();
             }
         });
+        
+        document.getElementById('docModal').addEventListener('click', function(e) {
+            if (e.target === this) {
+                closeDocModal();
+            }
+        });
+
+        // Doc & Feedback Logic
+        const theDocCache = { vi: null, en: null };
+
+        function openDocModal() {
+            document.getElementById('docModal').style.display = 'flex';
+            switchTab('doc');
+        }
+
+        function closeDocModal() {
+            document.getElementById('docModal').style.display = 'none';
+        }
+
+        function switchTab(tab) {
+            document.getElementById('tabDocBtn').classList.remove('active');
+            document.getElementById('tabFeedbackBtn').classList.remove('active');
+            document.getElementById('tab-doc').classList.remove('active');
+            document.getElementById('tab-feedback').classList.remove('active');
+
+            if (tab === 'doc') {
+                document.getElementById('tabDocBtn').classList.add('active');
+                document.getElementById('tab-doc').classList.add('active');
+                loadDocContent();
+            } else {
+                document.getElementById('tabFeedbackBtn').classList.add('active');
+                document.getElementById('tab-feedback').classList.add('active');
+            }
+        }
+
+        async function loadDocContent() {
+            document.getElementById('docLoading').style.display = 'block';
+            document.getElementById('docContent').style.display = 'none';
+            document.getElementById('docLoading').innerText = dict[currentLang].docLoading;
+
+            if (!theDocCache[currentLang]) {
+                try {
+                    const res = await fetch(`/api/doc?lang=${currentLang}`);
+                    theDocCache[currentLang] = await res.json();
+                } catch (e) {
+                    console.error(e);
+                    document.getElementById('docLoading').innerText = currentLang === 'vi' ? "Lỗi tải tài liệu." : "Error loading doc.";
+                    return;
+                }
+            }
+
+            const data = theDocCache[currentLang];
+            document.getElementById('docProjectName').innerText = data.project?.name || '';
+            document.getElementById('docProjectDesc').innerText = data.project?.description || '';
+            
+            const updatedText = currentLang === 'vi' ? 'Cập nhật lần cuối: ' : 'Last updated: ';
+            document.getElementById('docLastUpdated').innerText = data.last_updated ? updatedText + new Date(data.last_updated).toLocaleDateString() : '';
+            
+            document.getElementById('docMsgTitle').innerText = data.messages?.title || '';
+            
+            const msgs = data.messages?.content || [];
+            document.getElementById('docMsgContent').innerHTML = msgs.map(m => `<p>${escapeHtml(m)}</p>`).join('');
+
+            document.getElementById('docLoading').style.display = 'none';
+            document.getElementById('docContent').style.display = 'block';
+        }
+
+        async function submitFeedback(e) {
+            e.preventDefault();
+            const btn = document.getElementById('btnSubmitFeedback');
+            btn.disabled = true;
+            
+            const title = document.getElementById('fbTitle').value;
+            const content = document.getElementById('fbContent').value;
+            
+            try {
+                const res = await fetch('/api/feedback', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ title, content, lang: currentLang })
+                });
+                const data = await res.json();
+                alert(data.message || 'Success');
+                if (data.status === 'success') {
+                    document.getElementById('feedbackForm').reset();
+                }
+            } catch (err) {
+                console.error(err);
+                alert(currentLang === 'vi' ? "Lỗi khi gửi góp ý." : "Error submitting feedback.");
+            } finally {
+                btn.disabled = false;
+            }
+        }
         
         fetchVault();
     </script>

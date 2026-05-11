@@ -1,10 +1,12 @@
-from fastapi import FastAPI, HTTPException, Query
+from fastapi import FastAPI, HTTPException, Query, Request
 from fastapi.responses import FileResponse
 from fastapi.middleware.cors import CORSMiddleware
+from pydantic import BaseModel
 import sqlite3
 import json
 import os
 import math
+from datetime import datetime, timedelta
 
 app = FastAPI(title="Cyber Vault API")
 
@@ -22,6 +24,30 @@ def get_db_connection():
     conn = sqlite3.connect(DB_PATH)
     conn.row_factory = sqlite3.Row
     return conn
+
+@app.on_event("startup")
+def init_db():
+    try:
+        conn = get_db_connection()
+        conn.execute('''
+            CREATE TABLE IF NOT EXISTS feedback (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                ip_address TEXT NOT NULL,
+                title TEXT NOT NULL,
+                content TEXT NOT NULL,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+        ''')
+        conn.execute('''
+            CREATE TABLE IF NOT EXISTS banned_ips (
+                ip_address TEXT PRIMARY KEY,
+                banned_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+        ''')
+        conn.commit()
+        conn.close()
+    except Exception as e:
+        print(f"Error initializing database: {e}")
 
 @app.get("/api/vault")
 def get_vault_items(search: str = None, severity: str = None, lang: str = 'vi', page: int = Query(1, ge=1)):
@@ -111,3 +137,58 @@ def download_file(item_id: int, format: str = Query("json", regex="^(json|md)$")
         raise HTTPException(status_code=404, detail=f"File {format.upper()} chưa được tạo trên server")
 
     return FileResponse(path=file_path, filename=os.path.basename(file_path))
+
+class FeedbackSubmit(BaseModel):
+    title: str
+    content: str
+    lang: str = 'vi'
+
+@app.get("/api/doc")
+def get_doc(lang: str = 'vi'):
+    if lang not in ['vi', 'en']:
+        lang = 'vi'
+    file_path = f"/root/cyber_vault/doc_{lang}.json"
+    if not os.path.exists(file_path):
+        # Fallback local path for dev/test
+        local_path = os.path.join(os.path.dirname(__file__), f"doc_{lang}.json")
+        if os.path.exists(local_path):
+            file_path = local_path
+        else:
+            return {
+              "project": {"name": "Cyber Vault", "description": "Documentation not found"},
+              "last_updated": "",
+              "messages": {"title": "Error", "content": ["File not found on server."]}
+            }
+    with open(file_path, 'r', encoding='utf-8') as f:
+        return json.load(f)
+
+@app.post("/api/feedback")
+def submit_feedback(request: Request, feedback: FeedbackSubmit):
+    client_ip = request.client.host
+    if not client_ip:
+        client_ip = "unknown"
+        
+    conn = get_db_connection()
+    
+    banned = conn.execute("SELECT ip_address FROM banned_ips WHERE ip_address = ?", (client_ip,)).fetchone()
+    if banned:
+        conn.close()
+        msg = "Đã thực hiện quá nhiều, vui lòng thử lại sau." if feedback.lang == 'vi' else "Too many requests, please try again later."
+        return {"status": "success", "message": msg}
+        
+    one_hour_ago = datetime.utcnow() - timedelta(hours=1)
+    count = conn.execute("SELECT COUNT(*) as c FROM feedback WHERE ip_address = ? AND created_at >= ?", (client_ip, one_hour_ago.strftime('%Y-%m-%d %H:%M:%S'))).fetchone()['c']
+    
+    if count >= 3:
+        conn.execute("INSERT INTO banned_ips (ip_address) VALUES (?)", (client_ip,))
+        conn.commit()
+        conn.close()
+        msg = "Đã thực hiện quá nhiều, vui lòng thử lại sau." if feedback.lang == 'vi' else "Too many requests, please try again later."
+        return {"status": "success", "message": msg}
+        
+    conn.execute("INSERT INTO feedback (ip_address, title, content) VALUES (?, ?, ?)", (client_ip, feedback.title, feedback.content))
+    conn.commit()
+    conn.close()
+    
+    msg = "Cảm ơn bạn đã đóng góp ý kiến." if feedback.lang == 'vi' else "Thank you for your feedback."
+    return {"status": "success", "message": msg}
