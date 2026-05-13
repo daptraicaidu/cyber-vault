@@ -104,6 +104,11 @@ def get_vault_items(search: str = None, severity: str = None, lang: str = 'vi', 
     result_items = []
     for ix in items:
         item_dict = dict(ix)
+        file_path = item_dict.get('file_path', '')
+        if file_path:
+            filename = os.path.basename(file_path)
+            slug = filename.replace('_en.json', '').replace('_vi.json', '')
+            item_dict['slug'] = slug
         item_dict.pop('file_path', None)
         item_dict.pop('format', None)
         result_items.append(item_dict)
@@ -119,11 +124,39 @@ def get_vault_items(search: str = None, severity: str = None, lang: str = 'vi', 
 @app.get("/api/vault/search")
 def search_vault_items(q: str = Query(..., min_length=1), lang: str = 'vi'):
     conn = get_db_connection()
-    query = "SELECT id, title, category, severity, date_added FROM vault_index WHERE format = 'json' AND language = ? AND title LIKE ? ORDER BY date_added DESC LIMIT 10"
+    query = "SELECT id, title, category, severity, date_added, file_path FROM vault_index WHERE format = 'json' AND language = ? AND title LIKE ? ORDER BY date_added DESC LIMIT 10"
     params = [lang, f"%{q}%"]
     items = conn.execute(query, params).fetchall()
     conn.close()
-    return [dict(ix) for ix in items]
+    
+    result_items = []
+    for ix in items:
+        item_dict = dict(ix)
+        file_path = item_dict.get('file_path', '')
+        if file_path:
+            filename = os.path.basename(file_path)
+            slug = filename.replace('_en.json', '').replace('_vi.json', '')
+            item_dict['slug'] = slug
+        item_dict.pop('file_path', None)
+        result_items.append(item_dict)
+    return result_items
+
+@app.get("/api/vault/slug/{slug}")
+def get_vault_content_by_slug(slug: str, lang: str = 'en'):
+    if lang not in ['vi', 'en']:
+        lang = 'en'
+    conn = get_db_connection()
+    query = "SELECT id, file_path FROM vault_index WHERE format = 'json' AND language = ? AND file_path LIKE ?"
+    item = conn.execute(query, (lang, f"%/{slug}_{lang}.json")).fetchone()
+    conn.close()
+
+    if not item or not os.path.exists(item['file_path']):
+        raise HTTPException(status_code=404, detail="Không tìm thấy file")
+
+    with open(item['file_path'], 'r', encoding='utf-8') as f:
+        data = json.load(f)
+        
+    return {"id": item['id'], "content": data}
 
 @app.get("/api/vault/{item_id}/content")
 def get_vault_content(item_id: int):

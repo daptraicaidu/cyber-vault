@@ -506,7 +506,7 @@
                             if (sevRaw.includes("critical") || sevRaw.includes("nghiêm trọng") || sevRaw.includes("nghiem trong")) severClass = "Critical";
                             else if (sevRaw.includes("high") || sevRaw.includes("cao")) severClass = "High";
 
-                            return `<li onclick="selectSearchResult(${r.id})">
+                            return `<li onclick="selectSearchResult(${r.id}, '${r.slug}')">
                                 <div style="display:flex; justify-content:space-between; align-items:flex-start;">
                                     <strong style="color:var(--text);">${r.title}</strong>
                                     <div style="display:flex; align-items:center;">
@@ -541,9 +541,9 @@
             }
         });
 
-        function selectSearchResult(id) {
+        function selectSearchResult(id, slug) {
             document.getElementById('searchDropdown').style.display = 'none';
-            openDetail(id);
+            openDetail(id, slug);
         }
 
         document.getElementById('severityFilter').addEventListener('change', () => {
@@ -642,7 +642,7 @@
                 const dateHtml = dateInfo.formatted ? `<p style="font-size: 12px; color: #a6adc8; margin: 5px 0 0 0;">${t.dateAdded}: ${dateInfo.formatted}</p>` : '';
 
                 grid.innerHTML += `
-                    <div class="card" onclick="openDetail(${item.id})">
+                    <div class="card" onclick="openDetail(${item.id}, '${item.slug}')">
                         <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 10px;">
                             <span class="badge ${severClass}" style="margin-bottom: 0;">${item.severity || 'N/A'}</span>
                             ${badgeHtml}
@@ -718,8 +718,12 @@
             `;
         }
 
-        async function openDetail(id) {
+        async function openDetail(id, slug) {
             try {
+                if (slug) {
+                    window.history.pushState(null, '', `?v=${slug}#${currentLang}`);
+                }
+                
                 let data;
                 if (detailCache[id]) {
                     data = detailCache[id];
@@ -811,10 +815,42 @@
 
         function closeModal() {
             document.getElementById('detailModal').style.display = 'none';
+            window.history.pushState(null, '', window.location.pathname);
         }
 
         // Bootstrap
         initThemeLang();
+        
+        window.addEventListener('DOMContentLoaded', () => {
+            const urlParams = new URLSearchParams(window.location.search);
+            const slug = urlParams.get('v');
+            if (slug) {
+                let hashLang = window.location.hash.replace('#', '');
+                if (hashLang !== 'vi' && hashLang !== 'en') {
+                    hashLang = 'en'; // default to english if invalid or missing
+                }
+                
+                if (currentLang !== hashLang) {
+                    currentLang = hashLang;
+                    localStorage.setItem('lang', currentLang);
+                    updateUIStrings();
+                }
+                
+                fetch(`/api/vault/slug/${encodeURIComponent(slug)}?lang=${currentLang}`)
+                    .then(res => {
+                        if (!res.ok) throw new Error("Not found");
+                        return res.json();
+                    })
+                    .then(resData => {
+                        detailCache[resData.id] = resData.content;
+                        openDetail(resData.id, slug);
+                    })
+                    .catch(err => {
+                        console.error("Failed to load shared URL:", err);
+                        window.history.pushState(null, '', window.location.pathname);
+                    });
+            }
+        });
         
         document.getElementById('detailModal').addEventListener('click', function(e) {
             if (e.target === this) {
