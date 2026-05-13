@@ -95,7 +95,7 @@ def get_vault_items(search: str = None, severity: str = None, lang: str = 'vi', 
 
     # Fetch paginated items
     offset = (page - 1) * limit
-    items_query = f"SELECT * {base_query} LIMIT ? OFFSET ?"
+    items_query = f"SELECT * {base_query} ORDER BY date_added DESC LIMIT ? OFFSET ?"
     items_params = params + [limit, offset]
 
     items = conn.execute(items_query, items_params).fetchall()
@@ -119,7 +119,7 @@ def get_vault_items(search: str = None, severity: str = None, lang: str = 'vi', 
 @app.get("/api/vault/search")
 def search_vault_items(q: str = Query(..., min_length=1), lang: str = 'vi'):
     conn = get_db_connection()
-    query = "SELECT id, title, category, severity, date_added FROM vault_index WHERE format = 'json' AND language = ? AND title LIKE ? LIMIT 10"
+    query = "SELECT id, title, category, severity, date_added FROM vault_index WHERE format = 'json' AND language = ? AND title LIKE ? ORDER BY date_added DESC LIMIT 10"
     params = [lang, f"%{q}%"]
     items = conn.execute(query, params).fetchall()
     conn.close()
