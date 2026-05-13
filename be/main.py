@@ -141,7 +141,7 @@ def search_vault_items(q: str = Query(..., min_length=1), lang: str = 'vi'):
         result_items.append(item_dict)
     return result_items
 
-@app.get("/api/vault/slug/{slug}")
+@app.get("/api/vault/share/{slug}")
 def get_vault_content_by_slug(slug: str, lang: str = 'en'):
     if lang not in ['vi', 'en']:
         lang = 'en'

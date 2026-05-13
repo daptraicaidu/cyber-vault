@@ -836,7 +836,7 @@
                     updateUIStrings();
                 }
                 
-                fetch(`/api/vault/slug/${encodeURIComponent(slug)}?lang=${currentLang}`)
+                fetch(`/api/vault/share/${encodeURIComponent(slug)}?lang=${currentLang}`)
                     .then(res => {
                         if (!res.ok) throw new Error("Not found");
                         return res.json();
